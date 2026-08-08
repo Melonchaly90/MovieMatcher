@@ -14,7 +14,7 @@ milestone lands.
 | CountVectorizer genres / TfidfVectorizer descriptions (3.2) | `recommender.py` | Done |
 | Cosine similarity, top-3, self-exclusion, tie-break (3.3) | `recommender.py` | Done (genre + description) |
 | Fuzzy match + confirmation + not-found (3.3) | `matching.py` | Done |
-| Genre-vs-description comparison + written analysis (3.4) | `comparison.py` + `docs/results_writeup.md` | Not started |
+| Genre-vs-description comparison + written analysis (3.4) | `comparison.py` + `docs/results_writeup.md` | Comparison module done, write-up pending |
 | Modular structure, type hints, no bare `except` (3.5) | whole repo | Not started |
 | Tests: top-3 count, self-exclusion, not-found, tie-break (3.5) | `tests/` | Not started |
 | README (dataset, vectorization, tie-break, fuzzy match) | `README.md` | Not started |
@@ -110,4 +110,33 @@ movie_matcher/
   5 unit tests, all independently verified by direct execution against
   the approved data_loader.py logic. Files: `movie_matcher/matching.py`,
   `movie_matcher/cli.py`, `tests/test_matching.py`.
-- **Milestone 5 (comparison.py):** not started.
+- **Milestone 5 (comparison.py) — COMPLETE.** compare_recommendations runs
+  both pipelines as independent black boxes and combines results;
+  format_comparison returns a pure display string; run_sample_comparisons
+  gracefully skips not-found titles via logging. 6 unit tests, all
+  independently verified by direct execution against the full approved
+  pipeline. Files: `movie_matcher/comparison.py`, `tests/test_comparison.py`.
+
+  Real output captured against the full dataset (for the Milestone 7
+  results write-up):
+
+  - "The Dark Knight" — genre-based top-3 all tie at 1.0 similarity
+    (Bastille Day, Blood Father, Chappie); description-based gives a real
+    gradient (The Dark Knight Rises 0.21, Revolutionary Road 0.12,
+    Thor: The Dark World 0.11).
+  - "Interstellar" — genre-based: The Martian (1.0), Cloud Atlas (0.82),
+    The Fountain (0.82); description-based: The World's End (0.24),
+    Gravity (0.13), Silence (0.13).
+  - "Doctor Strange" — genre-based top-3 all tie at 1.0 (Avatar, Clash of
+    the Titans, Conan the Barbarian); description-based: No Strings
+    Attached (0.11), Sleeping Beauty (0.11), Step Up 2: The Streets (0.10).
+
+  Observation for the write-up: genre-based similarity hits exact 1.0 ties
+  frequently, since the genre vocabulary is small (~20 labels) and many
+  movies share an identical genre combination — the alphabetical tie-break
+  rule is load-bearing in practice, not just a rare edge case.
+  Description-based similarity is a smoother gradient but can surface
+  tonally/thematically-adjacent rather than genuinely similar movies
+  (e.g. Doctor Strange → Sleeping Beauty).
+
+- **Milestone 6 (test sweep + gap-check):** not started.
