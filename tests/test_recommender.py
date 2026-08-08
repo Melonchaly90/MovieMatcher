@@ -1,7 +1,13 @@
 import pytest
 import numpy as np
 import pandas as pd
-from movie_matcher.recommender import build_genre_vectors, top_k_similar, recommend_by_genre
+from movie_matcher.recommender import (
+    build_genre_vectors, 
+    top_k_similar, 
+    recommend_by_genre,
+    build_description_vectors,
+    recommend_by_description
+)
 from movie_matcher.data_loader import clean_dataset
 
 def test_build_genre_vectors_tokenizes_sci_fi_correctly():
@@ -95,3 +101,72 @@ def test_recommend_by_genre_end_to_end():
     assert titles[0] == 'Hero 2'
     # Galactic has Sci-Fi, Super has Action, either could be #2 depending on count vectors
     # but the point is we got 2 results and Hero is excluded.
+
+def test_build_description_vectors_stop_words():
+    df = pd.DataFrame({
+        'Description': ['The quick brown fox jumps over the lazy dog', 'A fast brown fox']
+    })
+    vectorizer, matrix = build_description_vectors(df)
+    features = vectorizer.get_feature_names_out()
+    assert 'the' not in features
+    assert 'a' not in features
+    assert 'of' not in features
+    assert 'fox' in features
+
+def test_recommend_by_description_not_found():
+    df = pd.DataFrame({
+        'Title': ['A', 'B'],
+        'Description': ['D1', 'D2'],
+        'normalized_title': ['a', 'b']
+    })
+    assert recommend_by_description(df, 'Nonexistent Movie') is None
+
+def test_recommend_by_description_end_to_end():
+    df = pd.DataFrame({
+        'Rank': [1, 2, 3, 4, 5],
+        'Title': ['Movie A', 'Movie B', 'Movie C', 'Movie D', 'Movie E'],
+        'Genre': ['G1', 'G2', 'G3', 'G4', 'G5'],
+        'Description': [
+            'An astronaut travels through a wormhole in space',
+            'A group of friends go on a road trip',
+            'An astronaut travels through a space wormhole',
+            'A historical drama about a king',
+            'A romantic comedy in Paris'
+        ]
+    })
+    df = clean_dataset(df)
+    
+    results = recommend_by_description(df, 'Movie A', k=2)
+    assert results is not None
+    assert len(results) == 2
+    titles = [r['title'] for r in results]
+    assert 'Movie A' not in titles
+    assert titles[0] == 'Movie C'
+
+def test_recommend_by_description_tie_break():
+    df = pd.DataFrame({
+        'Rank': [1, 2, 3],
+        'Title': ['Z Space', 'Query Movie', 'A Space'],
+        'Genre': ['G1', 'G2', 'G3'],
+        'Description': ['Identical space description.', 'Query description.', 'Identical space description.']
+    })
+    df = clean_dataset(df)
+    
+    results = recommend_by_description(df, 'Query Movie', k=2)
+    assert results is not None
+    assert len(results) == 2
+    assert results[0]['title'] == 'A Space'
+    assert results[1]['title'] == 'Z Space'
+
+def test_all_stop_word_description():
+    df = pd.DataFrame({
+        'Rank': [1, 2, 3],
+        'Title': ['A', 'B', 'C'],
+        'Genre': ['G1', 'G2', 'G3'],
+        'Description': ['The a of and', 'Some real content here', 'More real content']
+    })
+    df = clean_dataset(df)
+    
+    results = recommend_by_description(df, 'A', k=2)
+    assert results is not None
+    assert len(results) == 2
