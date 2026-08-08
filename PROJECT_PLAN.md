@@ -11,8 +11,8 @@ milestone lands.
 |---|---|---|
 | Load/clean, missing-value handling (3.1) | `data_loader.py` | Done |
 | Title normalization + dedup (3.1) | `data_loader.py` | Done |
-| CountVectorizer genres / TfidfVectorizer descriptions (3.2) | `recommender.py` | Genre done, description pending |
-| Cosine similarity, top-3, self-exclusion, tie-break (3.3) | `recommender.py` | Genre done, description pending |
+| CountVectorizer genres / TfidfVectorizer descriptions (3.2) | `recommender.py` | Done |
+| Cosine similarity, top-3, self-exclusion, tie-break (3.3) | `recommender.py` | Done (genre + description) |
 | Fuzzy match + confirmation + not-found (3.3) | `matching.py` | Not started |
 | Genre-vs-description comparison + written analysis (3.4) | `comparison.py` + `docs/results_writeup.md` | Not started |
 | Modular structure, type hints, no bare `except` (3.5) | whole repo | Not started |
@@ -94,4 +94,12 @@ movie_matcher/
   7 unit tests including an end-to-end case with hand-verified cosine
   similarity values. Files: `movie_matcher/recommender.py`,
   `tests/test_recommender.py`.
-- **Milestone 3 (recommender.py — description pipeline):** not started.
+- **Milestone 3 (recommender.py — description pipeline) — COMPLETE.**
+  TF-IDF-based similarity: TfidfVectorizer with stop_words='english' and
+  the default tokenizer (deliberate contrast with genre's custom
+  comma-splitting tokenizer, documented inline), recommend_by_description
+  reusing top_k_similar unchanged. 5 new unit tests including a
+  hand-verified near-duplicate-description ranking case and an
+  all-stop-words edge case. Files: `movie_matcher/recommender.py`
+  (additive only), `tests/test_recommender.py` (additive only).
+- **Milestone 4 (matching.py — fuzzy matching + CLI stub):** not started.
