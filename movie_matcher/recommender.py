@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 import scipy.sparse
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from movie_matcher.data_loader import find_by_normalized_title
 
@@ -116,6 +116,69 @@ def recommend_by_genre(df: pd.DataFrame, title: str, k: int = 3) -> Optional[lis
         
     # d. Build genre vectors
     vectorizer, matrix = build_genre_vectors(df)
+    
+    # e. Compute cosine similarity
+    # Determine the matched movie's row POSITION in the reset-index df
+    # Since match is a Series from the reset-index df, its name is its index position
+    exclude_position = match.name
+    query_vector = matrix[exclude_position]
+    
+    # Calculate similarity between the query vector and all rows
+    similarity_scores = cosine_similarity(query_vector, matrix).flatten()
+    
+    # g. Return the result of top_k_similar
+    return top_k_similar(similarity_scores, df, exclude_position, k)
+
+def build_description_vectors(df: pd.DataFrame) -> tuple[TfidfVectorizer, scipy.sparse.csr_matrix]:
+    """
+    Fits a TfidfVectorizer over the dataframe's Description column and returns both the 
+    fitted vectorizer and the resulting document-term matrix.
+    
+    Unlike genres, which require a custom tokenizer to prevent splitting hyphenated labels 
+    like "Sci-Fi", movie descriptions are normal English prose. Therefore, this function 
+    uses the TfidfVectorizer's default tokenizer and token pattern. It also uses 
+    stop_words='english' to filter out common English words (e.g., "the", "a", "of") 
+    that would otherwise dominate the vector space without carrying content signal.
+    
+    Args:
+        df: The pandas DataFrame containing a 'Description' column.
+        
+    Returns:
+        A tuple containing the fitted TfidfVectorizer and the sparse document-term matrix.
+    """
+    vectorizer = TfidfVectorizer(stop_words='english')
+    dt_matrix = vectorizer.fit_transform(df['Description'])
+    return vectorizer, dt_matrix
+
+def recommend_by_description(df: pd.DataFrame, title: str, k: int = 3) -> Optional[list[dict]]:
+    """
+    Orchestrates the description-based movie recommendation process.
+    
+    This function looks up a movie by its normalized title, builds description vectors 
+    for the entire dataset, computes cosine similarity between the queried movie 
+    and all others, and returns the top k matches.
+    
+    Args:
+        df: The pandas DataFrame containing the movie dataset.
+        title: The title of the movie to query.
+        k: The maximum number of recommendations to return.
+        
+    Returns:
+        A list of recommended movie dictionaries, or None if the queried title is not found.
+    """
+    # a. Reset index to ensure contiguous 0..n-1 range for position alignment
+    df = df.reset_index(drop=True)
+    
+    # b. Normalize the input title and look it up
+    normalized_query_title = title.lower().strip()
+    match = find_by_normalized_title(df, normalized_query_title)
+    
+    # c. If no match is found, return None
+    if match is None:
+        return None
+        
+    # d. Build description vectors
+    vectorizer, matrix = build_description_vectors(df)
     
     # e. Compute cosine similarity
     # Determine the matched movie's row POSITION in the reset-index df
