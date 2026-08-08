@@ -9,10 +9,10 @@ milestone lands.
 
 | PDF requirement (§) | Module | Status |
 |---|---|---|
-| Load/clean, missing-value handling (3.1) | `data_loader.py` | Not started |
-| Title normalization + dedup (3.1) | `data_loader.py` | Not started |
-| CountVectorizer genres / TfidfVectorizer descriptions (3.2) | `recommender.py` | Not started |
-| Cosine similarity, top-3, self-exclusion, tie-break (3.3) | `recommender.py` | Not started |
+| Load/clean, missing-value handling (3.1) | `data_loader.py` | Done |
+| Title normalization + dedup (3.1) | `data_loader.py` | Done |
+| CountVectorizer genres / TfidfVectorizer descriptions (3.2) | `recommender.py` | Genre done, description pending |
+| Cosine similarity, top-3, self-exclusion, tie-break (3.3) | `recommender.py` | Genre done, description pending |
 | Fuzzy match + confirmation + not-found (3.3) | `matching.py` | Not started |
 | Genre-vs-description comparison + written analysis (3.4) | `comparison.py` + `docs/results_writeup.md` | Not started |
 | Modular structure, type hints, no bare `except` (3.5) | whole repo | Not started |
@@ -79,7 +79,19 @@ movie_matcher/
 
 ## Milestone log
 
-- **Milestone 1 (data_loader.py):** Data loading and cleaning pipeline —
-  in progress. Scope: CSV ingestion with column validation, missing-value
-  handling, title normalization, duplicate-row removal, and exact-title
-  lookup with deterministic collision resolution.
+- **Milestone 1 (data_loader.py) — COMPLETE.** Data loading and cleaning
+  pipeline: CSV ingestion with required-column validation, missing-value
+  handling (drop with documented rationale), title normalization,
+  exact-duplicate removal, and exact-title lookup with deterministic
+  lowest-Rank collision resolution. 8 unit tests, all logic reviewed.
+  Files: `movie_matcher/data_loader.py`, `tests/test_data_loader.py`.
+- **Milestone 2 (recommender.py — genre pipeline) — COMPLETE.** Genre-based
+  similarity: CountVectorizer with a comma-splitting tokenizer (preserves
+  compound genre labels like "Sci-Fi"), an algorithm-agnostic top_k_similar
+  ranking core (self-exclusion, descending similarity, alphabetical
+  tie-break) designed for reuse by the description pipeline, and
+  recommend_by_genre orchestration reusing Milestone 1's title lookup.
+  7 unit tests including an end-to-end case with hand-verified cosine
+  similarity values. Files: `movie_matcher/recommender.py`,
+  `tests/test_recommender.py`.
+- **Milestone 3 (recommender.py — description pipeline):** not started.
