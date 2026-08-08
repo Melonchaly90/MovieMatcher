@@ -13,7 +13,7 @@ milestone lands.
 | Title normalization + dedup (3.1) | `data_loader.py` | Done |
 | CountVectorizer genres / TfidfVectorizer descriptions (3.2) | `recommender.py` | Done |
 | Cosine similarity, top-3, self-exclusion, tie-break (3.3) | `recommender.py` | Done (genre + description) |
-| Fuzzy match + confirmation + not-found (3.3) | `matching.py` | Not started |
+| Fuzzy match + confirmation + not-found (3.3) | `matching.py` | Done |
 | Genre-vs-description comparison + written analysis (3.4) | `comparison.py` + `docs/results_writeup.md` | Not started |
 | Modular structure, type hints, no bare `except` (3.5) | whole repo | Not started |
 | Tests: top-3 count, self-exclusion, not-found, tie-break (3.5) | `tests/` | Not started |
@@ -102,4 +102,12 @@ movie_matcher/
   hand-verified near-duplicate-description ranking case and an
   all-stop-words edge case. Files: `movie_matcher/recommender.py`
   (additive only), `tests/test_recommender.py` (additive only).
-- **Milestone 4 (matching.py — fuzzy matching + CLI stub):** not started.
+- **Milestone 4 (matching.py + cli.py) — COMPLETE.** Fuzzy title matching
+  via stdlib difflib with deduplicated candidates (handles the "The Host"
+  collision correctly), a predictable exact/fuzzy/not_found status
+  contract via resolve_title, and a minimal CLI requiring explicit
+  confirmation before any fuzzy-matched recommendation is generated.
+  5 unit tests, all independently verified by direct execution against
+  the approved data_loader.py logic. Files: `movie_matcher/matching.py`,
+  `movie_matcher/cli.py`, `tests/test_matching.py`.
+- **Milestone 5 (comparison.py):** not started.
