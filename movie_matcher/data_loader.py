@@ -60,7 +60,7 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     
     # Strip whitespace from string columns to handle empty-after-strip correctly
     for col in ['Title', 'Genre', 'Description']:
-        if cleaned_df[col].dtype == object:
+        if pd.api.types.is_string_dtype(cleaned_df[col]):
             cleaned_df[col] = cleaned_df[col].str.strip()
             
     # Drop rows where required columns are null

@@ -170,3 +170,41 @@ def test_all_stop_word_description():
     results = recommend_by_description(df, 'A', k=2)
     assert results is not None
     assert len(results) == 2
+
+def test_recommend_by_genre_returns_exactly_three():
+    df = pd.DataFrame({
+        'Rank': [1, 2, 3, 4, 5],
+        'Title': ['Hero', 'Villain', 'Sidekick', 'Mentor', 'Rival'],
+        'Genre': [
+            'Action,Sci-Fi',
+            'Action,Thriller',
+            'Comedy',
+            'Sci-Fi,Adventure',
+            'Action,Sci-Fi',
+        ],
+        'Description': ['D1', 'D2', 'D3', 'D4', 'D5'],
+    })
+    df = clean_dataset(df)
+
+    results = recommend_by_genre(df, 'Hero', k=3)
+    assert results is not None
+    assert len(results) == 3
+
+def test_recommend_by_description_returns_exactly_three():
+    df = pd.DataFrame({
+        'Rank': [1, 2, 3, 4, 5],
+        'Title': ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'],
+        'Genre': ['G1', 'G2', 'G3', 'G4', 'G5'],
+        'Description': [
+            'An astronaut explores distant galaxies beyond the stars',
+            'A detective investigates mysterious crimes in the city',
+            'An astronaut navigates through uncharted galaxies far away',
+            'A chef prepares exotic dishes for a royal banquet',
+            'An astronaut discovers alien civilizations among the stars',
+        ],
+    })
+    df = clean_dataset(df)
+
+    results = recommend_by_description(df, 'Alpha', k=3)
+    assert results is not None
+    assert len(results) == 3
