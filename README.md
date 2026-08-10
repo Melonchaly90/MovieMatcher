@@ -1,6 +1,6 @@
 # Movie Matcher
 
-A content-based movie recommendation system.
+A content-based movie recommendation system built with Python, pandas, scikit-learn, and Streamlit.
 
 Movie Matcher compares movies using two independent representations:
 
@@ -8,6 +8,8 @@ Movie Matcher compares movies using two independent representations:
 2. **Description-based similarity** using `TfidfVectorizer`
 
 For a requested movie, the system returns the three most similar movies while excluding the queried movie itself.
+
+The project provides both a command-line interface and a Streamlit web interface with movie poster assets.
 
 ## Project Structure
 
@@ -31,7 +33,11 @@ movie_matcher/
 │   └── test_integration.py
 ├── docs/
 │   └── results_writeup.md
+├── assets/
+│   └── ...                  # Movie poster assets used by Streamlit
+├── app.py                   # Streamlit web interface
 ├── README.md
+├── project plan.md
 ├── pytest.ini
 └── requirements.txt
 ```
@@ -42,9 +48,9 @@ The project uses a 1,000-movie dataset containing movie titles, genres, descript
 
 The recommendation system relies primarily on:
 
-- `Title`
-- `Genre`
-- `Description`
+* `Title`
+* `Genre`
+* `Description`
 
 The dataset was pre-validated for the fields used by the recommendation pipeline. It contains no missing `Title`, `Genre`, or `Description` values and no exact duplicate rows.
 
@@ -52,7 +58,9 @@ There is one legitimate title collision: two different movies are both titled **
 
 Dataset provenance and validation details are documented in:
 
-`data/DATA_SOURCE_NOTES.md`
+```text
+data/DATA_SOURCE_NOTES.md
+```
 
 ## Data Loading and Cleaning
 
@@ -75,7 +83,7 @@ When multiple movies share the same normalized title, exact lookup uses the movi
 
 Movie Matcher deliberately keeps the genre and description pipelines separate. This makes it possible to compare the behavior of the two representations directly.
 
-### Genre similarity
+### Genre Similarity
 
 Genres are represented using `CountVectorizer`.
 
@@ -83,11 +91,11 @@ The dataset stores genres as comma-separated labels, so the genre pipeline uses 
 
 Cosine similarity is then calculated between the resulting genre vectors.
 
-### Description similarity
+### Description Similarity
 
 Movie descriptions are represented using `TfidfVectorizer`.
 
-TF-IDF is better suited to free-form prose because it gives less importance to words that occur frequently across many descriptions and more importance to terms that are comparatively distinctive.
+TF-IDF is suited to free-form prose because it gives less importance to words that occur frequently across many descriptions and more importance to terms that are comparatively distinctive.
 
 The description pipeline also removes English stop words.
 
@@ -103,9 +111,10 @@ For a queried movie:
 2. Exclude the queried movie itself.
 3. Sort by similarity score in descending order.
 4. Apply a deterministic alphabetical tie-break using the normalized title.
-5. Return the requested number of recommendations.
+5. When normalized titles are identical, use the lowest `Rank`.
+6. Return the requested number of recommendations.
 
-The CLI and assignment workflow use `k=3`, producing exactly three recommendations when enough movies are available.
+The normal application workflow uses `k=3`, producing exactly three recommendations when enough movies are available.
 
 This deterministic tie-breaking is particularly important for the genre representation because many movies share identical genre combinations and therefore receive exactly the same similarity score.
 
@@ -117,7 +126,33 @@ If an exact normalized-title match cannot be found, `difflib.get_close_matches` 
 
 The CLI does **not** silently assume that a fuzzy match is correct. Instead, it presents the matched title to the user and requires explicit confirmation before generating recommendations.
 
+The same matching behavior is exposed through the application workflow.
+
 If no reasonable match is found, the system reports that the movie was not found instead of producing arbitrary recommendations.
+
+## Streamlit Web Interface
+
+The project includes a Streamlit frontend in:
+
+```text
+app.py
+```
+
+The frontend provides a user-facing interface for interacting with the Movie Matcher without requiring direct terminal interaction.
+
+Movie poster assets used by the interface are stored in:
+
+```text
+assets/
+```
+
+The Streamlit interface connects to the existing recommendation and matching modules rather than duplicating the recommendation logic inside the frontend.
+
+The application was successfully launched and manually verified in a web browser using:
+
+```powershell
+streamlit run app.py
+```
 
 ## Genre vs. Description Comparison
 
@@ -125,9 +160,9 @@ The project includes a comparison module that runs the same movie through both r
 
 Three sample movies are used for the comparison:
 
-- The Dark Knight
-- Interstellar
-- Doctor Strange
+* The Dark Knight
+* Interstellar
+* Doctor Strange
 
 The observed behavior illustrates the trade-off between the two representations.
 
@@ -137,36 +172,49 @@ Description-based similarity produces a smoother range of similarity scores beca
 
 The detailed comparison and analysis are documented in:
 
-`docs/results_writeup.md`
-
-## Testing
-
-The project uses pytest for automated testing.
-
-The test suite covers:
-
-- Dataset loading and validation
-- Missing-value handling
-- Exact duplicate handling
-- Title normalization and title collisions
-- Genre vectorization
-- Description vectorization
-- Cosine-similarity ranking
-- Self-exclusion
-- Deterministic tie-breaking
-- Fuzzy title matching
-- Not-found handling
-- Comparison-module behavior
-- Exact top-3 recommendation counts
-- End-to-end behavior against the real dataset
-
-Run the complete test suite with:
-
-```powershell
-python -m pytest -v
+```text
+docs/results_writeup.md
 ```
 
-The current full suite contains **37 tests**, all passing.
+## Testing and Verification
+
+The project includes pytest test files covering the core recommendation and matching functionality.
+
+The prepared test coverage includes:
+
+* Dataset loading and validation
+* Missing-value handling
+* Exact duplicate handling
+* Title normalization
+* Title collisions
+* Genre vectorization
+* Description vectorization
+* Cosine-similarity ranking
+* Self-exclusion
+* Deterministic tie-breaking
+* Fuzzy title matching
+* Not-found handling
+* Comparison-module behavior
+* Top-3 recommendation behavior
+* Integration behavior against the real dataset
+
+In addition to the prepared automated tests, the application's behavior was manually verified through the running application in the browser.
+
+The browser verification covered the user-facing recommendation workflow, including:
+
+* Movie selection/input
+* Genre-based recommendations
+* Description-based recommendations
+* Exactly three recommendations
+* Self-exclusion
+* Fuzzy title matching
+* Fuzzy-match confirmation
+* Not-found handling
+* Recommendation output
+* Movie poster display
+* Comparison behavior
+
+The project follows the development requirement that automated tests are prepared but are not executed automatically unless explicitly requested.
 
 ## Requirements
 
@@ -176,16 +224,27 @@ Install the project dependencies with:
 python -m pip install -r requirements.txt
 ```
 
-The main dependencies are:
+The main dependencies include:
 
-- pandas
-- NumPy
-- scikit-learn
-- pytest for testing
+* pandas
+* NumPy
+* scikit-learn
+* pytest
+* Streamlit
 
-## Running the Application
+## Running the Streamlit Application
 
-The recommendation logic is separated from terminal input so it can be tested independently.
+From the project root, run:
+
+```powershell
+streamlit run app.py
+```
+
+Streamlit will start the local web application and provide a browser address for the Movie Matcher interface.
+
+## Running the CLI
+
+The recommendation logic is separated from terminal input so it can be used independently of the user interface.
 
 The CLI entry point is:
 
@@ -199,12 +258,14 @@ The CLI accepts a movie title, resolves exact or fuzzy matches, confirms fuzzy m
 
 The project follows several deliberate design decisions:
 
-- Genre and description representations remain independent.
-- Recommendation logic is separated from CLI input/output.
-- Similarity ranking is shared between both recommendation pipelines.
-- Missing critical fields are dropped rather than fabricated.
-- Title matching is case-insensitive and whitespace-normalized.
-- Fuzzy matches require explicit user confirmation.
-- Similarity ties are resolved deterministically.
-- The queried movie is always excluded from its own recommendations.
-- No external API calls or secrets are required.
+* Genre and description representations remain independent.
+* Recommendation logic is separated from CLI and Streamlit input/output.
+* Similarity ranking is shared between both recommendation pipelines.
+* Missing critical fields are dropped rather than fabricated.
+* Title matching is case-insensitive and whitespace-normalized.
+* Fuzzy matches require explicit user confirmation.
+* Similarity ties are resolved deterministically.
+* The queried movie is always excluded from its own recommendations.
+* The Streamlit frontend does not duplicate recommendation logic.
+* No external API calls or secrets are required.
+* The implementation uses modular components with clear responsibilities.

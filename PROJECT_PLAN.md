@@ -1,142 +1,487 @@
-# Movie Matcher — Project Plan (living document)
+# Movie Matcher — Project Plan (Living Document)
 
-Source of truth: `KHIZEX_Week6_MovieMatcher_Assignment.pdf` (Khizex AI Engineering
-Internship, Week 6). This file is the requirements traceability matrix + binding
-architectural decisions + milestone roadmap. Update the status column as each
-milestone lands.
+**Source of truth:** `KHIZEX_Week6_MovieMatcher_Assignment.pdf`
+(Khizex AI Engineering Internship, Week 6)
 
-## Requirements → Architecture traceability
+This document is the project's requirements traceability matrix, binding
+architectural decisions, milestone roadmap, and completion log.
 
-| PDF requirement (§) | Module | Status |
-|---|---|---|
-| Load/clean, missing-value handling (3.1) | `data_loader.py` | Done |
-| Title normalization + dedup (3.1) | `data_loader.py` | Done |
-| CountVectorizer genres / TfidfVectorizer descriptions (3.2) | `recommender.py` | Done |
-| Cosine similarity, top-3, self-exclusion, tie-break (3.3) | `recommender.py` | Done (genre + description) |
-| Fuzzy match + confirmation + not-found (3.3) | `matching.py` | Done |
-| Genre-vs-description comparison + written analysis (3.4) | `comparison.py` + `docs/results_writeup.md` | Comparison module done, write-up pending |
-| Modular structure, type hints, no bare `except` (3.5) | whole repo | Not started |
-| Tests: top-3 count, self-exclusion, not-found, tie-break (3.5) | `tests/` | Not started |
-| README (dataset, vectorization, tie-break, fuzzy match) | `README.md` | Not started |
+All planned implementation milestones and assignment requirements have now
+been completed and verified.
+
+---
+
+## Requirements → Architecture Traceability
+
+| PDF requirement (§)                                                     | Module / File                                             | Status   |
+| ----------------------------------------------------------------------- | --------------------------------------------------------- | -------- |
+| Load/clean, missing-value handling (3.1)                                | `movie_matcher/data_loader.py`                            | **Done** |
+| Title normalization + deduplication (3.1)                               | `movie_matcher/data_loader.py`                            | **Done** |
+| CountVectorizer genres / TfidfVectorizer descriptions (3.2)             | `movie_matcher/recommender.py`                            | **Done** |
+| Cosine similarity, top-3, self-exclusion, deterministic tie-break (3.3) | `movie_matcher/recommender.py`                            | **Done** |
+| Fuzzy match + confirmation + not-found handling (3.3)                   | `movie_matcher/matching.py` + `movie_matcher/cli.py`      | **Done** |
+| Genre-vs-description comparison + written analysis (3.4)                | `movie_matcher/comparison.py` + `docs/results_writeup.md` | **Done** |
+| Modular structure, type hints, no bare `except` (3.5)                   | Whole repository                                          | **Done** |
+| Tests covering required behaviors (3.5)                                 | `tests/`                                                  | **Done** |
+| README documenting dataset, vectorization, tie-break, fuzzy matching    | `README.md`                                               | **Done** |
+| User-facing Streamlit interface                                         | `app.py` + `assets/`                                      | **Done** |
+| Streamlit dependency                                                    | `requirements.txt`                                        | **Done** |
+
+---
 
 ## Dataset
 
-`data/imdb_movie_data.csv` — 1000 movies, columns:
-`Rank, Title, Genre, Description, Director, Actors, Year, Runtime (Minutes), Rating, Votes, Revenue (Millions), Metascore`.
-Full provenance and pre-validation findings in `data/DATA_SOURCE_NOTES.md`. Key
-findings that shape the design: zero missing Title/Genre/Description; zero exact
-duplicate rows; one title collision ("The Host", Rank 240 vs Rank 633 — two
-different movies, not a duplicate).
+`data/imdb_movie_data.csv` — 1,000 movies with the following columns:
 
-## Binding architectural decisions
+`Rank, Title, Genre, Description, Director, Actors, Year, Runtime (Minutes), Rating, Votes, Revenue (Millions), Metascore`
 
-1. **No blended/combined vector.** Keep genre (CountVectorizer) and description
-   (TfidfVectorizer) as two independent, comparable pipelines — matches §3.4
-   exactly and avoids an unreviewed combination rule.
-2. **Tie-break, two-tier:** primary = alphabetical by normalized title; secondary
-   (identical normalized titles, e.g. "The Host") = lowest `Rank`.
-3. **Dedup:** keep first occurrence by `Rank` on exact duplicate rows, log count.
-4. **Missing values:** drop rows missing `Title`/`Genre`/`Description` (documented
-   choice — these fields can't be vectorized if absent).
-5. **Fuzzy matching:** `difflib.get_close_matches` (stdlib), confirm match to user
-   before returning recommendations.
-6. **No `.env`/secrets** — no API keys or external calls in this project.
-7. **Tests co-located per milestone**, not deferred to a single later pass.
+Full provenance and pre-validation findings are documented in:
 
-## Milestone roadmap
+`data/DATA_SOURCE_NOTES.md`
 
-1. Data loader — load, clean, normalize, dedup, exact-title + collision lookup
-2. Genre pipeline — CountVectorizer + shared `top_k_similar()` core
-3. Description pipeline — TfidfVectorizer, reuse the same core
-4. Fuzzy matching + not-found handling + CLI stub
-5. Comparison module — 3 sample queries, genre vs. description, side by side
-6. Full test sweep + gap-check against §3.5 / self-check checklist
-7. README, results write-up, final QA pass
+Key findings that shape the design:
 
-## Repo structure (target)
+* Zero missing `Title`, `Genre`, or `Description` values.
+* Zero exact duplicate rows.
+* One title collision: `"The Host"` appears at Rank 240 and Rank 633.
+* The two `"The Host"` records represent different movies and must not be
+  incorrectly treated as duplicate records.
 
-```
+---
+
+## Binding Architectural Decisions
+
+### 1. Independent recommendation pipelines
+
+No blended or combined vector is used.
+
+Genre and description similarity remain two independent pipelines:
+
+* `CountVectorizer` for genres
+* `TfidfVectorizer` for descriptions
+
+This preserves the direct comparison required by §3.4 and avoids introducing
+an unreviewed weighting or combination rule.
+
+### 2. Deterministic tie-breaking
+
+Recommendations are ordered by:
+
+1. Descending cosine similarity.
+2. Alphabetical order of normalized title when similarity scores are equal.
+3. Lowest `Rank` when normalized titles are identical.
+
+This makes recommendation results reproducible.
+
+### 3. Deduplication
+
+Exact duplicate rows are removed while preserving the first occurrence by
+`Rank`.
+
+The `"The Host"` title collision is not treated as an exact duplicate because
+the records represent different movies.
+
+### 4. Missing values
+
+Rows missing `Title`, `Genre`, or `Description` are dropped.
+
+These fields are required by the corresponding recommendation pipelines, so
+fabricating replacement values could introduce misleading signals.
+
+### 5. Fuzzy matching
+
+`difflib.get_close_matches` from the Python standard library is used for
+approximate title matching.
+
+A fuzzy match requires explicit user confirmation before recommendations are
+generated.
+
+### 6. No secrets or external API calls
+
+The project does not require API keys, credentials, or external service
+calls.
+
+No secrets are hardcoded into the repository.
+
+### 7. Modular architecture
+
+The project separates:
+
+* Data loading and cleaning
+* Recommendation/vectorization logic
+* Title matching
+* Genre/description comparison
+* CLI interaction
+* Streamlit presentation
+
+The Streamlit frontend uses the existing recommendation pipeline rather than
+duplicating recommendation logic inside `app.py`.
+
+### 8. Testing and verification
+
+Test files are maintained alongside the implementation and cover the required
+behaviors.
+
+The completed application was also manually verified through the running
+Streamlit interface in a web browser.
+
+Browser verification covered the major user-facing behaviors, including
+recommendation generation, fuzzy matching, confirmation, not-found handling,
+self-exclusion, top-3 results, comparison behavior, and poster display.
+
+---
+
+## Milestone Roadmap
+
+1. **Data loader** — load, clean, normalize, deduplicate, and deterministic
+   title lookup — **COMPLETE**
+2. **Genre pipeline** — CountVectorizer + shared `top_k_similar()` ranking core
+   — **COMPLETE**
+3. **Description pipeline** — TfidfVectorizer using the shared ranking core —
+   **COMPLETE**
+4. **Fuzzy matching + not-found handling + CLI** — **COMPLETE**
+5. **Comparison module** — compare genre and description recommendations for
+   three sample queries — **COMPLETE**
+6. **Testing, requirements gap-check, and code-quality review** — **COMPLETE**
+7. **README, results write-up, Streamlit frontend, final QA, and repository
+   preparation** — **COMPLETE**
+
+---
+
+## Repository Structure
+
+```text
 movie_matcher/
 ├── data/
 │   ├── imdb_movie_data.csv
 │   └── DATA_SOURCE_NOTES.md
 ├── movie_matcher/
 │   ├── __init__.py
-│   ├── data_loader.py     # load/clean/normalize/dedup, pandas at the edges only
-│   ├── recommender.py     # vectorization + cosine similarity, pure functions, no I/O
-│   ├── matching.py        # fuzzy title matching, not-found handling
-│   ├── comparison.py      # §3.4 side-by-side comparison + analysis
-│   └── cli.py             # terminal loop / argparse entry point
+│   ├── data_loader.py       # load/clean/normalize/dedup + title lookup
+│   ├── recommender.py       # vectorization + cosine similarity
+│   ├── matching.py          # fuzzy title matching + not-found handling
+│   ├── comparison.py        # §3.4 comparison and analysis
+│   └── cli.py               # terminal interface
 ├── tests/
 │   ├── test_data_loader.py
 │   ├── test_recommender.py
-│   └── test_matching.py
+│   ├── test_matching.py
+│   ├── test_comparison.py
+│   └── test_integration.py
 ├── docs/
 │   └── results_writeup.md
+├── assets/
+│   └── ...                  # movie poster assets used by Streamlit
+├── app.py                   # Streamlit web interface
 ├── README.md
+├── project plan.md
+├── pytest.ini
 └── requirements.txt
 ```
 
-## Milestone log
+---
 
-- **Milestone 1 (data_loader.py) — COMPLETE.** Data loading and cleaning
-  pipeline: CSV ingestion with required-column validation, missing-value
-  handling (drop with documented rationale), title normalization,
-  exact-duplicate removal, and exact-title lookup with deterministic
-  lowest-Rank collision resolution. 8 unit tests, all logic reviewed.
-  Files: `movie_matcher/data_loader.py`, `tests/test_data_loader.py`.
-- **Milestone 2 (recommender.py — genre pipeline) — COMPLETE.** Genre-based
-  similarity: CountVectorizer with a comma-splitting tokenizer (preserves
-  compound genre labels like "Sci-Fi"), an algorithm-agnostic top_k_similar
-  ranking core (self-exclusion, descending similarity, alphabetical
-  tie-break) designed for reuse by the description pipeline, and
-  recommend_by_genre orchestration reusing Milestone 1's title lookup.
-  7 unit tests including an end-to-end case with hand-verified cosine
-  similarity values. Files: `movie_matcher/recommender.py`,
-  `tests/test_recommender.py`.
-- **Milestone 3 (recommender.py — description pipeline) — COMPLETE.**
-  TF-IDF-based similarity: TfidfVectorizer with stop_words='english' and
-  the default tokenizer (deliberate contrast with genre's custom
-  comma-splitting tokenizer, documented inline), recommend_by_description
-  reusing top_k_similar unchanged. 5 new unit tests including a
-  hand-verified near-duplicate-description ranking case and an
-  all-stop-words edge case. Files: `movie_matcher/recommender.py`
-  (additive only), `tests/test_recommender.py` (additive only).
-- **Milestone 4 (matching.py + cli.py) — COMPLETE.** Fuzzy title matching
-  via stdlib difflib with deduplicated candidates (handles the "The Host"
-  collision correctly), a predictable exact/fuzzy/not_found status
-  contract via resolve_title, and a minimal CLI requiring explicit
-  confirmation before any fuzzy-matched recommendation is generated.
-  5 unit tests, all independently verified by direct execution against
-  the approved data_loader.py logic. Files: `movie_matcher/matching.py`,
-  `movie_matcher/cli.py`, `tests/test_matching.py`.
-- **Milestone 5 (comparison.py) — COMPLETE.** compare_recommendations runs
-  both pipelines as independent black boxes and combines results;
-  format_comparison returns a pure display string; run_sample_comparisons
-  gracefully skips not-found titles via logging. 6 unit tests, all
-  independently verified by direct execution against the full approved
-  pipeline. Files: `movie_matcher/comparison.py`, `tests/test_comparison.py`.
+# Milestone Log
 
-  Real output captured against the full dataset (for the Milestone 7
-  results write-up):
+## Milestone 1 — Data Loader — COMPLETE
 
-  - "The Dark Knight" — genre-based top-3 all tie at 1.0 similarity
-    (Bastille Day, Blood Father, Chappie); description-based gives a real
-    gradient (The Dark Knight Rises 0.21, Revolutionary Road 0.12,
-    Thor: The Dark World 0.11).
-  - "Interstellar" — genre-based: The Martian (1.0), Cloud Atlas (0.82),
-    The Fountain (0.82); description-based: The World's End (0.24),
-    Gravity (0.13), Silence (0.13).
-  - "Doctor Strange" — genre-based top-3 all tie at 1.0 (Avatar, Clash of
-    the Titans, Conan the Barbarian); description-based: No Strings
-    Attached (0.11), Sleeping Beauty (0.11), Step Up 2: The Streets (0.10).
+Implemented the data loading and cleaning pipeline with:
 
-  Observation for the write-up: genre-based similarity hits exact 1.0 ties
-  frequently, since the genre vocabulary is small (~20 labels) and many
-  movies share an identical genre combination — the alphabetical tie-break
-  rule is load-bearing in practice, not just a rare edge case.
-  Description-based similarity is a smoother gradient but can surface
-  tonally/thematically-adjacent rather than genuinely similar movies
-  (e.g. Doctor Strange → Sleeping Beauty).
+* CSV ingestion
+* Required-column validation
+* Missing-value handling
+* Empty-field handling
+* Title normalization
+* Exact duplicate removal
+* Deterministic title lookup
+* Lowest-`Rank` resolution for identical normalized titles
 
-- **Milestone 6 (test sweep + gap-check):** not started.
+Files:
+
+* `movie_matcher/data_loader.py`
+* `tests/test_data_loader.py`
+
+---
+
+## Milestone 2 — Genre Recommendation Pipeline — COMPLETE
+
+Implemented genre-based movie similarity using:
+
+* `CountVectorizer`
+* A comma-splitting tokenizer to preserve compound genre labels such as
+  `"Sci-Fi"`
+* Cosine similarity
+* Shared `top_k_similar()` ranking logic
+* Self-exclusion
+* Deterministic tie-breaking
+* Title lookup integration
+
+Files:
+
+* `movie_matcher/recommender.py`
+* `tests/test_recommender.py`
+
+---
+
+## Milestone 3 — Description Recommendation Pipeline — COMPLETE
+
+Implemented description-based similarity using:
+
+* `TfidfVectorizer`
+* English stop-word removal
+* Default text tokenization
+* The shared `top_k_similar()` ranking core
+
+The description pipeline remains independent from the genre pipeline so that
+the two approaches can be compared directly.
+
+Files:
+
+* `movie_matcher/recommender.py`
+* `tests/test_recommender.py`
+
+---
+
+## Milestone 4 — Matching + CLI — COMPLETE
+
+Implemented:
+
+* Exact title matching
+* Fuzzy title matching using `difflib`
+* Deduplicated fuzzy-match candidates
+* Explicit fuzzy-match confirmation
+* Predictable exact/fuzzy/not-found status handling
+* CLI interaction
+
+The implementation correctly handles the `"The Host"` title collision.
+
+Files:
+
+* `movie_matcher/matching.py`
+* `movie_matcher/cli.py`
+* `tests/test_matching.py`
+
+---
+
+## Milestone 5 — Genre vs. Description Comparison — COMPLETE
+
+Implemented a comparison layer that treats both recommendation pipelines as
+independent black boxes.
+
+The comparison module supports:
+
+* Running both recommendation methods
+* Combining their results for display
+* Formatting comparison output
+* Gracefully handling not-found sample titles
+
+Files:
+
+* `movie_matcher/comparison.py`
+* `tests/test_comparison.py`
+* `docs/results_writeup.md`
+
+Three sample comparisons were performed against the full dataset.
+
+### `"The Dark Knight"`
+
+**Genre-based:**
+
+* Bastille Day — 1.00
+* Blood Father — 1.00
+* Chappie — 1.00
+
+**Description-based:**
+
+* The Dark Knight Rises — 0.21
+* Revolutionary Road — 0.12
+* Thor: The Dark World — 0.11
+
+### `"Interstellar"`
+
+**Genre-based:**
+
+* The Martian — 1.00
+* Cloud Atlas — 0.82
+* The Fountain — 0.82
+
+**Description-based:**
+
+* The World's End — 0.24
+* Gravity — 0.13
+* Silence — 0.13
+
+### `"Doctor Strange"`
+
+**Genre-based:**
+
+* Avatar — 1.00
+* Clash of the Titans — 1.00
+* Conan the Barbarian — 1.00
+
+**Description-based:**
+
+* No Strings Attached — 0.11
+* Sleeping Beauty — 0.11
+* Step Up 2: The Streets — 0.10
+
+### Main observation
+
+Genre-based similarity frequently produces exact 1.00 ties because the dataset
+contains a relatively small genre vocabulary and many movies share identical
+genre combinations.
+
+Therefore, the deterministic alphabetical tie-break is important to the
+actual behavior of the system rather than being merely an edge-case safeguard.
+
+Description-based similarity produces a smoother similarity gradient but can
+also produce recommendations based on shared textual vocabulary that do not
+necessarily correspond to strong human-perceived similarity.
+
+The complete analysis is documented in:
+
+`docs/results_writeup.md`
+
+---
+
+## Milestone 6 — Testing, Requirements Gap-Check, and Code Quality — COMPLETE
+
+The implementation was checked against the assignment requirements and the
+project's architectural constraints.
+
+The verification covered:
+
+* Top-3 recommendation count
+* Self-exclusion
+* Not-found handling
+* Fuzzy title matching
+* Fuzzy-match confirmation
+* Deterministic tie-breaking
+* Title normalization
+* Duplicate handling
+* Missing-value handling
+* Genre vectorization
+* Description vectorization
+* Cosine similarity
+* Genre/description comparison
+* Modular separation of responsibilities
+* Type hints
+* No bare `except` blocks
+* Required test files
+* Integration behavior
+
+The application was also manually exercised through the browser to verify the
+actual user-facing workflow.
+
+The browser verification confirmed that the implemented behavior works through
+the Streamlit interface rather than only at the module level.
+
+---
+
+## Milestone 7 — Documentation, Streamlit Frontend, and Final QA — COMPLETE
+
+### Streamlit frontend — COMPLETE
+
+A Streamlit-based graphical interface was added through:
+
+```text
+app.py
+```
+
+The interface provides a user-facing way to interact with Movie Matcher
+without requiring direct terminal interaction.
+
+Movie poster assets are stored under:
+
+```text
+assets/
+```
+
+The Streamlit application was successfully launched locally with:
+
+```powershell
+streamlit run app.py
+```
+
+The running application was manually verified through a web browser.
+
+### Dependency update — COMPLETE
+
+`requirements.txt` includes the dependencies required to run the application,
+including Streamlit.
+
+### README — COMPLETE
+
+`README.md` documents:
+
+* Project purpose
+* Dataset
+* Data cleaning
+* Vectorization choices
+* Cosine similarity
+* Top-3 behavior
+* Self-exclusion
+* Deterministic tie-breaking
+* Fuzzy matching
+* Streamlit interface
+* CLI
+* Testing and verification
+* Project structure
+* Design principles
+
+### Results write-up — COMPLETE
+
+`docs/results_writeup.md` documents:
+
+* The three required sample comparisons
+* Genre-based recommendations
+* Description-based recommendations
+* Similarity scores
+* Interpretation of the results
+* Strengths and weaknesses of both approaches
+* Importance of deterministic tie-breaking
+* Overall conclusion
+
+### Final QA — COMPLETE
+
+Final verification confirmed:
+
+* Assignment requirements are addressed.
+* Documentation reflects the implemented architecture.
+* Repository structure reflects the actual project.
+* No external API keys or secrets are required.
+* `requirements.txt` includes Streamlit.
+* The Streamlit application launches successfully.
+* User-facing behavior was manually verified in the browser.
+* Fuzzy matching and confirmation behavior were checked.
+* Not-found behavior was checked.
+* Self-exclusion and top-3 recommendation behavior were checked.
+* Genre and description recommendation outputs were checked.
+* Comparison behavior was checked.
+* Movie poster assets display through the frontend.
+
+---
+
+# Project Completion Status
+
+**Movie Matcher implementation: COMPLETE**
+
+The project now contains:
+
+* A cleaned and validated movie dataset pipeline.
+* Independent genre and description recommendation engines.
+* Cosine-similarity ranking.
+* Deterministic tie-breaking.
+* Fuzzy title matching with confirmation.
+* Not-found handling.
+* Genre-vs-description comparison.
+* Automated test files covering core functionality.
+* A command-line interface.
+* A Streamlit web interface.
+* Movie poster assets.
+* Complete README documentation.
+* Results and analysis documentation.
+* Final browser-based functional verification.
+
+The implementation is ready for final Git staging, commit, and repository
+submission.
